@@ -73,16 +73,19 @@ if uploaded_transactions is not None:
         selected_customer = st.selectbox("Select a Customer ID", customer_ids)
         
         if selected_customer:
-            customer_basket = df_transactions[df_transactions['CustomerID'] == selected_customer]['Description'].unique()
-            matched_rules = rules[rules['antecedents'].apply(lambda x: any(item in customer_basket for item in x))]
+            customer_basket = set(df_transactions[df_transactions['CustomerID'] == selected_customer]['Description'].unique())
+            
+            # Convert frozen sets to lists for proper comparison
+            rules['antecedents'] = rules['antecedents'].apply(lambda x: set(x))
+            rules['consequents'] = rules['consequents'].apply(lambda x: list(x))
+            
+            matched_rules = rules[rules['antecedents'].apply(lambda x: x.issubset(customer_basket))]
             
             if not matched_rules.empty:
                 st.write("### Recommended Products for Customer")
-                recommended_products = matched_rules['consequents'].explode().unique()
-                st.write(recommended_products)
+                recommended_products = set(matched_rules['consequents'].explode())
+                st.write(list(recommended_products))
             else:
-                st.write("No recommendations found for this customer.")
+                st.write("No recommendations found for this customer. Try lowering the minimum lift or support.")
     else:
         st.error("Required columns 'InvoiceNo', 'Description', and 'CustomerID' not found in dataset.")
-
-
