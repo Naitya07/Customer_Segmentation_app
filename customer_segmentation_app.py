@@ -45,9 +45,10 @@ if uploaded_transactions is not None:
     st.write("### Online Retail Data Preview")
     st.write(df_transactions.head())
     
-    if 'Description' in df_transactions.columns and 'InvoiceNo' in df_transactions.columns:
+    if 'Description' in df_transactions.columns and 'InvoiceNo' in df_transactions.columns and 'CustomerID' in df_transactions.columns:
         # Data preprocessing
         df_transactions.dropna(subset=['CustomerID', 'Description'], inplace=True)
+        df_transactions['CustomerID'] = df_transactions['CustomerID'].astype(str)
         
         # Basket for Apriori
         basket = df_transactions.groupby(['InvoiceNo', 'Description'])['Quantity'].sum().unstack().fillna(0)
@@ -66,6 +67,22 @@ if uploaded_transactions is not None:
         
         st.write("### Association Rules")
         st.write(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+        
+        # Customer-specific recommendations
+        customer_ids = df_transactions['CustomerID'].unique().tolist()
+        selected_customer = st.selectbox("Select a Customer ID", customer_ids)
+        
+        if selected_customer:
+            customer_basket = df_transactions[df_transactions['CustomerID'] == selected_customer]['Description'].unique()
+            matched_rules = rules[rules['antecedents'].apply(lambda x: any(item in customer_basket for item in x))]
+            
+            if not matched_rules.empty:
+                st.write("### Recommended Products for Customer")
+                recommended_products = matched_rules['consequents'].explode().unique()
+                st.write(recommended_products)
+            else:
+                st.write("No recommendations found for this customer.")
     else:
-        st.error("Required columns 'InvoiceNo' and 'Description' not found in dataset.")
+        st.error("Required columns 'InvoiceNo', 'Description', and 'CustomerID' not found in dataset.")
+
 
